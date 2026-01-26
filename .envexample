@@ -1,0 +1,3 @@
+DISCORD_BOT_TOKEN=your_token_here
+DISCORD_GUILD_ID=your_guild_id_here
+DISCORD_SCHEDULE_PATH=config/schedules.json

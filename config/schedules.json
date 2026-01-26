@@ -1,0 +1,25 @@
+{
+  "digest_time": "8:00",
+  "digest_channel": "events",
+  "reminder_minutes": [
+    30,
+    15,
+    1
+  ],
+  "schedules": [
+    {
+      "name": "KCNA Session",
+      "description": "Study for the Cloud-Native Associate Exam",
+      "voice_channel": "K8s | CKAD",
+      "notify_channel": "events",
+      "days": [
+        "monday",
+        "wednesday",
+        "friday"
+      ],
+      "time": "17:00",
+      "timezone": "America/New_York",
+      "duration_minutes": 120
+    }
+  ]
+}
