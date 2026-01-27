@@ -1,0 +1,6 @@
+project_id        = "your-gcp-project-id"
+region            = "us-east1"
+app_name          = "discord-cncf-bot"
+discord_bot_token = "your-discord-bot-token"
+discord_guild_id  = "your-discord-guild-id"
+github_repo       = "owner/repo-name"
