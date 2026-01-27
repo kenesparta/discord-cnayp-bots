@@ -12,3 +12,10 @@
 
 # OS
 .DS_Store
+
+# Terraform
+tf/.terraform/
+tf/*.tfstate
+tf/*.tfstate.*
+tf/*.tfvars
+tf/.terraform.lock.hcl
