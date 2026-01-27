@@ -290,8 +290,12 @@ func (s *Scheduler) sendReminder(ctx context.Context, schedule Schedule, eventTi
 		timeText = fmt.Sprintf("%d minutes", minutesBefore)
 	}
 
-	msg := fmt.Sprintf(
-		"@everyone **Reminder:** %s starts in %s! \n(duration: %d min)\n%s\nJoin in <#%s>",
+	msg := fmt.Sprintf(`⏰ @everyone **Reminder:** %s starts in %s!
+
+⏱️ **Duration:** %d minutes
+%s
+
+📍 Join us in <#%s>`,
 		schedule.Name,
 		timeText,
 		schedule.DurationMinutes,
@@ -328,11 +332,14 @@ func (s *Scheduler) shouldTrigger(schedule Schedule, now time.Time) bool {
 	}
 
 	localNow := now.In(loc)
-	dayName := strings.ToLower(localNow.Weekday().String())
+
+	// Check if tomorrow matches a scheduled day
+	tomorrow := localNow.AddDate(0, 0, 1)
+	tomorrowDayName := strings.ToLower(tomorrow.Weekday().String())
 
 	dayMatch := false
 	for _, d := range schedule.Days {
-		if strings.ToLower(d) == dayName {
+		if strings.ToLower(d) == tomorrowDayName {
 			dayMatch = true
 			break
 		}
@@ -351,11 +358,13 @@ func (s *Scheduler) shouldTrigger(schedule Schedule, now time.Time) bool {
 	fmt.Sscanf(parts[0], "%d", &hour)
 	fmt.Sscanf(parts[1], "%d", &minute)
 
+	// Trigger at the same time one day before
 	if localNow.Hour() != hour || localNow.Minute() != minute {
 		return false
 	}
 
-	dateKey := localNow.Format("2006-01-02")
+	// Use tomorrow's date as the key to prevent duplicate event creation
+	dateKey := tomorrow.Format("2006-01-02")
 	s.mu.RLock()
 	lastDate := s.lastCreated[schedule.Name]
 	s.mu.RUnlock()
@@ -372,7 +381,10 @@ func (s *Scheduler) triggerSchedule(ctx context.Context, schedule Schedule, now 
 
 	loc, _ := time.LoadLocation(schedule.Timezone)
 	localNow := now.In(loc)
-	dateKey := localNow.Format("2006-01-02")
+
+	// Event is for tomorrow
+	tomorrow := localNow.AddDate(0, 0, 1)
+	dateKey := tomorrow.Format("2006-01-02")
 
 	s.mu.Lock()
 	s.lastCreated[schedule.Name] = dateKey
@@ -390,10 +402,15 @@ func (s *Scheduler) triggerSchedule(ctx context.Context, schedule Schedule, now 
 		return
 	}
 
-	// Schedule start time 1 minute in the future to avoid "past time" errors
-	// The scheduler already verified we're at the right time, but by the time
-	// the API call is made, the exact scheduled time may have passed
-	startTime := localNow.Add(time.Minute).Truncate(time.Minute)
+	parts := strings.Split(schedule.Time, ":")
+	var hour, minute int
+	fmt.Sscanf(parts[0], "%d", &hour)
+	fmt.Sscanf(parts[1], "%d", &minute)
+
+	startTime := time.Date(
+		tomorrow.Year(), tomorrow.Month(), tomorrow.Day(),
+		hour, minute, 0, 0, loc,
+	)
 	endTime := startTime.Add(time.Duration(schedule.DurationMinutes) * time.Minute)
 
 	event := &discord.GuildScheduledEventCreate{
@@ -402,108 +419,48 @@ func (s *Scheduler) triggerSchedule(ctx context.Context, schedule Schedule, now 
 		Description:        schedule.Description,
 		ScheduledStartTime: startTime.UTC().Format(time.RFC3339),
 		ScheduledEndTime:   endTime.UTC().Format(time.RFC3339),
-		EntityType:         2, // VOICE
+		EntityType:         2, // VOICE entity type
 		PrivacyLevel:       2, // GUILD_ONLY
 	}
 
 	createdEvent, err := s.client.CreateScheduledEvent(ctx, s.guildID, event)
 	if err != nil {
-		log.Printf("failed to create scheduled event %s: %v", schedule.Name, err)
+		log.Printf("failed to create scheduled event for %s: %v", schedule.Name, err)
 		return
 	}
 
-	log.Printf("created scheduled event: %s (ID: %s)", createdEvent.Name, createdEvent.ID)
+	log.Printf("created scheduled event for: %s (starts %s)", schedule.Name, startTime.Format(time.RFC3339))
 
-	notification := fmt.Sprintf(
-		"@everyone **%s** starts <t:%d:R>! (%d min)\n%s\nJoin in <#%s>",
+	// Send notification to the events channel
+	notification := fmt.Sprintf(`🎉 Hello @everyone
+**New Event Alert!**
+
+📌 **%s**
+%s
+
+🗓️ **When:** <t:%d:F> (<t:%d:R>)
+🌐 **Timezone:** %s
+⏱️ **Duration:** %d minutes
+📍 **Where:** <#%s>
+
+See you there! 👋
+https://discord.com/events/%s/%s`,
 		schedule.Name,
-		startTime.Unix(),
-		schedule.DurationMinutes,
 		schedule.Description,
+		startTime.Unix(),
+		startTime.Unix(),
+		schedule.Timezone,
+		schedule.DurationMinutes,
 		voiceChannelID,
+		s.guildID,
+		createdEvent.ID,
 	)
 
 	if _, err := s.client.SendMessage(ctx, notifyChannelID, notification); err != nil {
-		log.Printf("failed to send notification for %s: %v", schedule.Name, err)
+		log.Printf("failed to send event notification for %s: %v", schedule.Name, err)
+	} else {
+		log.Printf("sent event notification for: %s", schedule.Name)
 	}
-}
-
-// ListSchedules returns the names of all available schedules.
-func (s *Scheduler) ListSchedules() []string {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	names := make([]string, len(s.schedules))
-	for i, sch := range s.schedules {
-		names[i] = sch.Name
-	}
-	return names
-}
-
-// CreateEventByIndex creates a Discord scheduled event by 1-based index.
-func (s *Scheduler) CreateEventByIndex(ctx context.Context, index int) (*discord.GuildScheduledEvent, string, error) {
-	s.mu.RLock()
-	if index < 1 || index > len(s.schedules) {
-		s.mu.RUnlock()
-		return nil, "", fmt.Errorf("invalid schedule number: %d (valid: 1-%d)", index, len(s.schedules))
-	}
-	schedule := s.schedules[index-1]
-	s.mu.RUnlock()
-
-	return s.createEvent(ctx, &schedule)
-}
-
-func (s *Scheduler) createEvent(ctx context.Context, schedule *Schedule) (*discord.GuildScheduledEvent, string, error) {
-	voiceChannelID, err := s.resolveChannelID(ctx, schedule.VoiceChannel)
-	if err != nil {
-		return nil, "", fmt.Errorf("resolve voice channel: %w", err)
-	}
-
-	notifyChannelID, err := s.resolveChannelID(ctx, schedule.NotifyChannel)
-	if err != nil {
-		return nil, "", fmt.Errorf("resolve notify channel: %w", err)
-	}
-
-	loc, err := time.LoadLocation(schedule.Timezone)
-	if err != nil {
-		return nil, "", fmt.Errorf("invalid timezone %s: %w", schedule.Timezone, err)
-	}
-
-	now := time.Now().In(loc)
-	startTime := now.Add(5 * time.Minute).Truncate(time.Minute)
-	endTime := startTime.Add(time.Duration(schedule.DurationMinutes) * time.Minute)
-
-	event := &discord.GuildScheduledEventCreate{
-		ChannelID:          voiceChannelID,
-		Name:               schedule.Name,
-		Description:        schedule.Description,
-		ScheduledStartTime: startTime.UTC().Format(time.RFC3339),
-		ScheduledEndTime:   endTime.UTC().Format(time.RFC3339),
-		EntityType:         2, // VOICE
-		PrivacyLevel:       2, // GUILD_ONLY
-	}
-
-	createdEvent, err := s.client.CreateScheduledEvent(ctx, s.guildID, event)
-	if err != nil {
-		return nil, "", fmt.Errorf("create scheduled event: %w", err)
-	}
-
-	log.Printf("created scheduled event: %s (ID: %s)", createdEvent.Name, createdEvent.ID)
-
-	notification := fmt.Sprintf(
-		"@everyone **%s** starts <t:%d:R>! (%d min)\n%s\nJoin in <#%s>",
-		schedule.Name,
-		startTime.Unix(),
-		schedule.DurationMinutes,
-		schedule.Description,
-		voiceChannelID,
-	)
-
-	if _, err := s.client.SendMessage(ctx, notifyChannelID, notification); err != nil {
-		log.Printf("failed to send notification for %s: %v", schedule.Name, err)
-	}
-
-	return createdEvent, notifyChannelID, nil
 }
 
 func (s *Scheduler) resolveChannelID(ctx context.Context, channelName string) (string, error) {

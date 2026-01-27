@@ -17,25 +17,25 @@ func TestShouldTrigger(t *testing.T) {
 		want     bool
 	}{
 		{
-			name: "triggers on matching day and time",
+			name: "triggers one day before matching day at same time",
 			schedule: Schedule{
 				Name:     "Test Event",
 				Days:     []string{"monday"},
 				Time:     "17:00",
 				Timezone: "UTC",
 			},
-			now:  time.Date(2025, 1, 27, 17, 0, 0, 0, time.UTC), // Monday
+			now:  time.Date(2025, 1, 26, 17, 0, 0, 0, time.UTC), // Sunday (one day before Monday)
 			want: true,
 		},
 		{
-			name: "does not trigger on wrong day",
+			name: "does not trigger if tomorrow is not scheduled",
 			schedule: Schedule{
 				Name:     "Test Event",
 				Days:     []string{"tuesday"},
 				Time:     "17:00",
 				Timezone: "UTC",
 			},
-			now:  time.Date(2025, 1, 27, 17, 0, 0, 0, time.UTC), // Monday
+			now:  time.Date(2025, 1, 26, 17, 0, 0, 0, time.UTC), // Sunday (tomorrow is Monday)
 			want: false,
 		},
 		{
@@ -46,18 +46,18 @@ func TestShouldTrigger(t *testing.T) {
 				Time:     "18:00",
 				Timezone: "UTC",
 			},
-			now:  time.Date(2025, 1, 27, 17, 0, 0, 0, time.UTC), // Monday
+			now:  time.Date(2025, 1, 26, 17, 0, 0, 0, time.UTC), // Sunday at 17:00
 			want: false,
 		},
 		{
-			name: "triggers with multiple days",
+			name: "triggers with multiple days when tomorrow matches",
 			schedule: Schedule{
 				Name:     "Test Event",
 				Days:     []string{"monday", "wednesday", "friday"},
 				Time:     "17:00",
 				Timezone: "UTC",
 			},
-			now:  time.Date(2025, 1, 29, 17, 0, 0, 0, time.UTC), // Wednesday
+			now:  time.Date(2025, 1, 28, 17, 0, 0, 0, time.UTC), // Tuesday (tomorrow is Wednesday)
 			want: true,
 		},
 		{
@@ -68,7 +68,7 @@ func TestShouldTrigger(t *testing.T) {
 				Time:     "17:00",
 				Timezone: "UTC",
 			},
-			now:  time.Date(2025, 1, 27, 17, 0, 0, 0, time.UTC), // Monday
+			now:  time.Date(2025, 1, 26, 17, 0, 0, 0, time.UTC), // Sunday (tomorrow is Monday)
 			want: true,
 		},
 	}
@@ -83,10 +83,11 @@ func TestShouldTrigger(t *testing.T) {
 	}
 }
 
-func TestShouldTrigger_AlreadyCreatedToday(t *testing.T) {
+func TestShouldTrigger_AlreadyCreatedForTomorrow(t *testing.T) {
+	// Event on Monday was already created on Sunday
 	s := &Scheduler{
 		lastCreated: map[string]string{
-			"Test Event": "2025-01-27",
+			"Test Event": "2025-01-27", // Monday's date
 		},
 	}
 
@@ -97,10 +98,11 @@ func TestShouldTrigger_AlreadyCreatedToday(t *testing.T) {
 		Timezone: "UTC",
 	}
 
-	now := time.Date(2025, 1, 27, 17, 0, 0, 0, time.UTC)
+	// Sunday at 17:00 (tomorrow is Monday)
+	now := time.Date(2025, 1, 26, 17, 0, 0, 0, time.UTC)
 
 	if s.shouldTrigger(schedule, now) {
-		t.Error("shouldTrigger() should return false when event already created today")
+		t.Error("shouldTrigger() should return false when event already created for tomorrow")
 	}
 }
 
@@ -116,34 +118,12 @@ func TestShouldTrigger_DifferentTimezone(t *testing.T) {
 		Timezone: "America/New_York",
 	}
 
-	// 17:00 UTC = 12:00 EST (during standard time)
-	now := time.Date(2025, 1, 27, 17, 0, 0, 0, time.UTC)
+	// 17:00 UTC on Sunday = 12:00 EST on Sunday (during standard time)
+	// Tomorrow is Monday, which matches the schedule
+	now := time.Date(2025, 1, 26, 17, 0, 0, 0, time.UTC)
 
 	if !s.shouldTrigger(schedule, now) {
-		t.Error("shouldTrigger() should handle timezone conversion")
-	}
-}
-
-func TestListSchedules(t *testing.T) {
-	s := &Scheduler{
-		schedules: []Schedule{
-			{Name: "Event 1"},
-			{Name: "Event 2"},
-			{Name: "Event 3"},
-		},
-	}
-
-	names := s.ListSchedules()
-
-	if len(names) != 3 {
-		t.Errorf("ListSchedules() returned %d names, want 3", len(names))
-	}
-
-	expected := []string{"Event 1", "Event 2", "Event 3"}
-	for i, name := range names {
-		if name != expected[i] {
-			t.Errorf("ListSchedules()[%d] = %s, want %s", i, name, expected[i])
-		}
+		t.Error("shouldTrigger() should handle timezone conversion and trigger one day before")
 	}
 }
 

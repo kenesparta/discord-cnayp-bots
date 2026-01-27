@@ -2,22 +2,46 @@
   "digest_time": "8:00",
   "digest_channel": "events",
   "reminder_minutes": [
+    120,
     30,
     15,
-    1
+    5
   ],
   "schedules": [
     {
       "name": "KCNA Session",
       "description": "Study for the Cloud-Native Associate Exam",
-      "voice_channel": "K8s | CKAD",
+      "voice_channel": "K8s | KCNA",
       "notify_channel": "events",
       "days": [
         "monday",
-        "wednesday",
         "friday"
       ],
-      "time": "17:00",
+      "time": "18:00",
+      "timezone": "America/New_York",
+      "duration_minutes": 120
+    },
+    {
+      "name": "KCNA Session",
+      "description": "Study for the Cloud-Native Associate Exam",
+      "voice_channel": "K8s | KCNA",
+      "notify_channel": "events",
+      "days": [
+        "wednesday"
+      ],
+      "time": "20:00",
+      "timezone": "America/New_York",
+      "duration_minutes": 120
+    },
+    {
+      "name": "Test Event",
+      "description": "Test Event",
+      "voice_channel": "K8s | KCNA",
+      "notify_channel": "events",
+      "days": [
+        "tuesday"
+      ],
+      "time": "23:28",
       "timezone": "America/New_York",
       "duration_minutes": 120
     }
