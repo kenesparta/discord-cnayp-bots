@@ -13,7 +13,7 @@ resource "google_compute_instance" "bot" {
   boot_disk {
     initialize_params {
       image = "cos-cloud/cos-stable"
-      size  = 10 # GB, minimal for free tier
+      size  = 10
       type  = "pd-standard"
     }
   }
@@ -31,6 +31,8 @@ resource "google_compute_instance" "bot" {
   }
 
   metadata = {
+    ssh-keys = var.ssh_public_key
+
     # Startup script to run the bot container
     startup-script = <<-EOF
       #!/bin/bash

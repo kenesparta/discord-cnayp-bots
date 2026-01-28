@@ -19,7 +19,7 @@
         "friday"
       ],
       "time": "18:00",
-      "timezone": "America/New_York",
+      "timezone": "America/Lima",
       "duration_minutes": 120
     },
     {
@@ -31,7 +31,7 @@
         "wednesday"
       ],
       "time": "20:00",
-      "timezone": "America/New_York",
+      "timezone": "America/Lima",
       "duration_minutes": 120
     },
     {
@@ -43,7 +43,7 @@
         "tuesday"
       ],
       "time": "00:21",
-      "timezone": "America/New_York",
+      "timezone": "America/Lima",
       "duration_minutes": 120
     }
   ]

@@ -25,3 +25,8 @@ variable "discord_guild_id" {
   description = "Discord guild (server) ID"
   type        = string
 }
+
+variable "ssh_public_key" {
+  description = "SSH public key for instance access (format: username:key)"
+  type        = string
+}
