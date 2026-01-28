@@ -12,7 +12,7 @@ variable "region" {
 variable "app_name" {
   description = "Application name"
   type        = string
-  default     = "discord-cncf-bot"
+  default     = "discord-cnayp-bot"
 }
 
 variable "discord_bot_token" {

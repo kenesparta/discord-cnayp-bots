@@ -6,8 +6,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/kenesparta/discord-cncf-bots/internal/bot"
-	"github.com/kenesparta/discord-cncf-bots/internal/config"
+	"github.com/kenesparta/discord-cnayp-bots/internal/bot"
+	"github.com/kenesparta/discord-cnayp-bots/internal/config"
 )
 
 func main() {

@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kenesparta/discord-cncf-bots/internal/discord"
+	"github.com/kenesparta/discord-cnayp-bots/internal/discord"
 )
 
 // Schedule represents a scheduled event configuration.
@@ -44,23 +44,25 @@ type Scheduler struct {
 	digestChannel   string
 	reminderMinutes []int
 
-	channelCache  map[string]string
-	lastCreated   map[string]string // schedule name -> date (YYYY-MM-DD)
-	lastDigest    string            // date of last digest (YYYY-MM-DD)
-	sentReminders map[string]bool   // "scheduleName:date:minutes" -> true
-	mu            sync.RWMutex
+	channelCache      map[string]string
+	lastCreated       map[string]string // schedule name -> date (YYYY-MM-DD)
+	lastDigest        string            // date of last digest (YYYY-MM-DD)
+	sentReminders     map[string]bool   // "scheduleName:date:minutes" -> true
+	sentStartMessages map[string]bool   // "scheduleName:date" -> true
+	mu                sync.RWMutex
 }
 
 // New creates a new Scheduler instance.
 func New(client *discord.Client, guildID, configPath string) *Scheduler {
 	return &Scheduler{
-		client:          client,
-		guildID:         guildID,
-		configPath:      configPath,
-		channelCache:    make(map[string]string),
-		lastCreated:     make(map[string]string),
-		sentReminders:   make(map[string]bool),
-		reminderMinutes: []int{60, 15}, // default: 1 hour and 15 min before
+		client:            client,
+		guildID:           guildID,
+		configPath:        configPath,
+		channelCache:      make(map[string]string),
+		lastCreated:       make(map[string]string),
+		sentReminders:     make(map[string]bool),
+		sentStartMessages: make(map[string]bool),
+		reminderMinutes:   []int{60, 15}, // default: 1 hour and 15 min before
 	}
 }
 
@@ -96,6 +98,9 @@ func (s *Scheduler) Run(ctx context.Context) {
 		return
 	}
 
+	// Check immediately on startup
+	s.checkAll(ctx)
+
 	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
 
@@ -112,6 +117,7 @@ func (s *Scheduler) Run(ctx context.Context) {
 
 func (s *Scheduler) checkAll(ctx context.Context) {
 	s.checkDigest(ctx)
+	s.checkEventStarts(ctx)
 	s.checkReminders(ctx)
 	s.checkSchedules(ctx)
 }
@@ -205,6 +211,94 @@ func (s *Scheduler) sendDailyDigest(ctx context.Context, now time.Time) {
 	}
 }
 
+func (s *Scheduler) checkEventStarts(ctx context.Context) {
+	s.mu.RLock()
+	schedules := s.schedules
+	s.mu.RUnlock()
+
+	now := time.Now()
+
+	for _, schedule := range schedules {
+		loc, err := time.LoadLocation(schedule.Timezone)
+		if err != nil {
+			continue
+		}
+
+		localNow := now.In(loc)
+		dayName := strings.ToLower(localNow.Weekday().String())
+
+		dayMatch := false
+		for _, d := range schedule.Days {
+			if strings.ToLower(d) == dayName {
+				dayMatch = true
+				break
+			}
+		}
+		if !dayMatch {
+			continue
+		}
+
+		parts := strings.Split(schedule.Time, ":")
+		if len(parts) != 2 {
+			continue
+		}
+
+		var hour, minute int
+		fmt.Sscanf(parts[0], "%d", &hour)
+		fmt.Sscanf(parts[1], "%d", &minute)
+
+		if localNow.Hour() != hour || localNow.Minute() != minute {
+			continue
+		}
+
+		dateKey := localNow.Format("2006-01-02")
+		startKey := fmt.Sprintf("%s:%s", schedule.Name, dateKey)
+
+		s.mu.RLock()
+		sent := s.sentStartMessages[startKey]
+		s.mu.RUnlock()
+
+		if !sent {
+			go s.sendStartNotification(ctx, schedule, startKey)
+		}
+	}
+}
+
+func (s *Scheduler) sendStartNotification(ctx context.Context, schedule Schedule, startKey string) {
+	s.mu.Lock()
+	s.sentStartMessages[startKey] = true
+	s.mu.Unlock()
+
+	channelID, err := s.resolveChannelID(ctx, schedule.NotifyChannel)
+	if err != nil {
+		log.Printf("failed to resolve channel for start notification: %v", err)
+		return
+	}
+
+	voiceChannelID, _ := s.resolveChannelID(ctx, schedule.VoiceChannel)
+
+	msg := fmt.Sprintf(`🚀 @everyone **%s is starting now!**
+
+%s
+
+⏱️ **Duration:** %d minutes
+🌐 **Timezone:** %s
+
+📍 Join us in <#%s>`,
+		schedule.Name,
+		schedule.Description,
+		schedule.DurationMinutes,
+		schedule.Timezone,
+		voiceChannelID,
+	)
+
+	if _, err := s.client.SendMessage(ctx, channelID, msg); err != nil {
+		log.Printf("failed to send start notification: %v", err)
+	} else {
+		log.Printf("sent start notification for %s", schedule.Name)
+	}
+}
+
 func (s *Scheduler) checkReminders(ctx context.Context) {
 	s.mu.RLock()
 	schedules := s.schedules
@@ -290,7 +384,7 @@ func (s *Scheduler) sendReminder(ctx context.Context, schedule Schedule, eventTi
 		timeText = fmt.Sprintf("%d minutes", minutesBefore)
 	}
 
-	msg := fmt.Sprintf(`⏰ @everyone **Reminder:** %s starts in %s!
+	msg := fmt.Sprintf(`⏰ @everyone **Reminder:** %s starts in less than %s!
 
 ⏱️ **Duration:** %d minutes
 %s

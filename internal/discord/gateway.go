@@ -194,8 +194,8 @@ func (g *Gateway) identify(ctx context.Context) {
 		Intents: g.intents,
 		Properties: IdentifyProperties{
 			OS:      "linux",
-			Browser: "discord-cncf-bots",
-			Device:  "discord-cncf-bots",
+			Browser: "discord-cnayp-bots",
+			Device:  "discord-cnayp-bots",
 		},
 	}
 

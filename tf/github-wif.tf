@@ -37,9 +37,24 @@ resource "google_service_account_iam_member" "github_actions_wif" {
   member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/attribute.repository/${var.github_repo}"
 }
 
-resource "google_project_iam_member" "github_actions_run_admin" {
+# Compute Engine SSH access for deployments
+resource "google_project_iam_member" "github_actions_compute_admin" {
   project = var.project_id
-  role    = "roles/run.admin"
+  role    = "roles/compute.instanceAdmin.v1"
+  member  = "serviceAccount:${google_service_account.github_actions.email}"
+}
+
+# Required for SSH via IAP tunnel
+resource "google_project_iam_member" "github_actions_iap_tunnel" {
+  project = var.project_id
+  role    = "roles/iap.tunnelResourceAccessor"
+  member  = "serviceAccount:${google_service_account.github_actions.email}"
+}
+
+# Required for OS Login
+resource "google_project_iam_member" "github_actions_os_login" {
+  project = var.project_id
+  role    = "roles/compute.osLogin"
   member  = "serviceAccount:${google_service_account.github_actions.email}"
 }
 

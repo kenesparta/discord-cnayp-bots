@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"log"
 
-	"github.com/kenesparta/discord-cncf-bots/internal/config"
-	"github.com/kenesparta/discord-cncf-bots/internal/discord"
-	"github.com/kenesparta/discord-cncf-bots/internal/scheduler"
+	"github.com/kenesparta/discord-cnayp-bots/internal/config"
+	"github.com/kenesparta/discord-cnayp-bots/internal/discord"
+	"github.com/kenesparta/discord-cnayp-bots/internal/scheduler"
 )
 
 type Bot struct {

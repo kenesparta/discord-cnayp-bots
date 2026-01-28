@@ -1,0 +1,65 @@
+name: Deploy to Compute Engine
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  REGION: ${{ vars.GCP_REGION }}
+  ZONE: ${{ vars.GCP_ZONE }}
+  APP_NAME: discord-cnayp-bot
+  REGISTRY: ${{ vars.GCP_REGION }}-docker.pkg.dev
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker
+        run: gcloud auth configure-docker ${{ env.REGISTRY }} --quiet
+
+      - name: Build and push image
+        run: |
+          docker build -t ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.APP_NAME }}/${{ env.APP_NAME }}:${{ github.sha }} .
+          docker build -t ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.APP_NAME }}/${{ env.APP_NAME }}:latest .
+          docker push ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.APP_NAME }}/${{ env.APP_NAME }}:${{ github.sha }}
+          docker push ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.APP_NAME }}/${{ env.APP_NAME }}:latest
+
+      - name: Deploy to Compute Engine
+        run: |
+          gcloud compute ssh ${{ env.APP_NAME }} \
+            --zone=${{ env.ZONE }} \
+            --project=${{ env.PROJECT_ID }} \
+            --command='
+              docker-credential-gcr configure-docker --registries=${{ env.REGISTRY }}
+              docker pull ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.APP_NAME }}/${{ env.APP_NAME }}:latest
+              docker stop ${{ env.APP_NAME }} 2>/dev/null || true
+              docker rm ${{ env.APP_NAME }} 2>/dev/null || true
+              DISCORD_BOT_TOKEN=$(gcloud secrets versions access latest --secret=${{ env.APP_NAME }}-discord-token)
+              DISCORD_GUILD_ID=$(gcloud secrets versions access latest --secret=${{ env.APP_NAME }}-guild-id)
+              docker run -d \
+                --name ${{ env.APP_NAME }} \
+                --restart unless-stopped \
+                -e DISCORD_BOT_TOKEN="$DISCORD_BOT_TOKEN" \
+                -e DISCORD_GUILD_ID="$DISCORD_GUILD_ID" \
+                -e TZ=America/Lima \
+                ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.APP_NAME }}/${{ env.APP_NAME }}:latest
+            '

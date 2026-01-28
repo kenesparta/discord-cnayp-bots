@@ -5,12 +5,13 @@
     120,
     30,
     15,
-    5
+    5,
+    1
   ],
   "schedules": [
     {
       "name": "KCNA Session",
-      "description": "Study for the Cloud-Native Associate Exam",
+      "description": "Study for the Kubernetes Cloud-Native Associate Exam",
       "voice_channel": "K8s | KCNA",
       "notify_channel": "events",
       "days": [
@@ -22,8 +23,8 @@
       "duration_minutes": 120
     },
     {
-      "name": "KCNA Session",
-      "description": "Study for the Cloud-Native Associate Exam",
+      "name": "KCNA Session [Special]",
+      "description": "Study for the Kubernetes Cloud-Native Associate Exam",
       "voice_channel": "K8s | KCNA",
       "notify_channel": "events",
       "days": [
@@ -34,14 +35,14 @@
       "duration_minutes": 120
     },
     {
-      "name": "Test Event",
-      "description": "Test Event",
+      "name": "KCNA Session [Special]",
+      "description": "Study for the Kubernetes Cloud-Native Associate Exam",
       "voice_channel": "K8s | KCNA",
       "notify_channel": "events",
       "days": [
         "tuesday"
       ],
-      "time": "23:28",
+      "time": "00:21",
       "timezone": "America/New_York",
       "duration_minutes": 120
     }

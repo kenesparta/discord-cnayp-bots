@@ -86,7 +86,7 @@ func (c *Client) do(ctx context.Context, method, endpoint string, body, result a
 
 	req.Header.Set("Authorization", "Bot "+c.token)
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "DiscordBot (https://github.com/kenesparta/discord-cncf-bots, 1.0.0)")
+	req.Header.Set("User-Agent", "DiscordBot (https://github.com/kenesparta/discord-cnayp-bots, 1.0.0)")
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
