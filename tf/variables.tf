@@ -1,18 +1,23 @@
-variable "project_id" {
-  description = "GCP project ID"
+variable "aws_region" {
+  description = "AWS region"
   type        = string
+  default     = "us-east-1"
 }
 
-variable "region" {
-  description = "GCP region"
+variable "aws_profile" {
+  description = "AWS CLI profile name"
   type        = string
-  default     = "us-east1"
 }
 
 variable "app_name" {
   description = "Application name"
   type        = string
   default     = "discord-cnayp-bot"
+}
+
+variable "github_repo" {
+  description = "GitHub repository in format owner/repo"
+  type        = string
 }
 
 variable "discord_bot_token" {
@@ -22,11 +27,7 @@ variable "discord_bot_token" {
 }
 
 variable "discord_guild_id" {
-  description = "Discord guild (server) ID"
+  description = "Discord guild ID"
   type        = string
-}
-
-variable "ssh_public_key" {
-  description = "SSH public key for instance access (format: username:key)"
-  type        = string
+  sensitive   = true
 }
