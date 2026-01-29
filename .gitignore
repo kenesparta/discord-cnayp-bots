@@ -19,3 +19,4 @@ tf/*.tfstate
 tf/*.tfstate.*
 tf/*.tfvars
 tf/.terraform.lock.hcl
+tf/*.tfplan

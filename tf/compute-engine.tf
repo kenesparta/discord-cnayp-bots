@@ -42,11 +42,17 @@ resource "google_compute_instance" "bot" {
       # Authenticate to Artifact Registry
       docker-credential-gcr configure-docker --registries=${var.region}-docker.pkg.dev
 
-      # Fetch secrets from Secret Manager
-      DISCORD_BOT_TOKEN=$(curl -s "http://metadata.google.internal/computeMetadata/v1/instance/attributes/discord-bot-token" -H "Metadata-Flavor: Google" 2>/dev/null || \
-        gcloud secrets versions access latest --secret="${var.app_name}-discord-token" 2>/dev/null || echo "")
-      DISCORD_GUILD_ID=$(curl -s "http://metadata.google.internal/computeMetadata/v1/instance/attributes/discord-guild-id" -H "Metadata-Flavor: Google" 2>/dev/null || \
-        gcloud secrets versions access latest --secret="${var.app_name}-guild-id" 2>/dev/null || echo "")
+      # Get access token from metadata server
+      ACCESS_TOKEN=$(curl -s "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token" \
+        -H "Metadata-Flavor: Google" | cut -d'"' -f4)
+
+      # Fetch secrets from Secret Manager API using curl
+      DISCORD_BOT_TOKEN=$(curl -s \
+        "https://secretmanager.googleapis.com/v1/projects/${var.project_id}/secrets/${var.app_name}-discord-token/versions/latest:access" \
+        -H "Authorization: Bearer $ACCESS_TOKEN" | grep -o '"data":"[^"]*"' | cut -d'"' -f4 | base64 -d)
+      DISCORD_GUILD_ID=$(curl -s \
+        "https://secretmanager.googleapis.com/v1/projects/${var.project_id}/secrets/${var.app_name}-guild-id/versions/latest:access" \
+        -H "Authorization: Bearer $ACCESS_TOKEN" | grep -o '"data":"[^"]*"' | cut -d'"' -f4 | base64 -d)
 
       # Stop existing container if running
       docker stop ${var.app_name} 2>/dev/null || true
