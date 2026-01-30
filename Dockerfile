@@ -1,25 +1,33 @@
-FROM golang:1.25-alpine AS builder
+FROM python:3.14-slim AS builder
 
 WORKDIR /app
 
-COPY go.mod go.sum ./
-RUN go mod download
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
-COPY . .
+ENV UV_COMPILE_BYTECODE=1
+ENV UV_LINK_MODE=copy
 
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o bot ./cmd/bot
+COPY pyproject.toml README.md ./
+RUN uv sync --no-dev --no-install-project
+
+COPY src ./src
+RUN uv sync --no-dev
 
 
-FROM alpine:3.21
+FROM python:3.14-slim
 
-RUN apk add --no-cache tzdata ca-certificates
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    tzdata \
+    && rm -rf /var/lib/apt/lists/*
 
 ENV TZ=America/Lima
-ENV DISCORD_SCHEDULE_PATH=/app/config/schedules.json
 
 WORKDIR /app
 
-COPY --from=builder /app/bot .
-COPY --from=builder /app/config ./config
+COPY --from=builder /app/.venv ./.venv
+COPY --from=builder /app/src ./src
 
-ENTRYPOINT ["./bot"]
+ENV PATH="/app/.venv/bin:$PATH"
+
+ENTRYPOINT ["python", "-m", "cnayp_bot"]

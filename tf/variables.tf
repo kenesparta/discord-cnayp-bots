@@ -1,33 +1,22 @@
-variable "aws_region" {
-  description = "AWS region"
-  type        = string
-  default     = "us-east-1"
-}
-
-variable "aws_profile" {
-  description = "AWS CLI profile name"
+variable "project_id" {
+  description = "GCP project ID"
   type        = string
 }
 
-variable "app_name" {
-  description = "Application name"
+variable "region" {
+  description = "GCP region"
   type        = string
-  default     = "discord-cnayp-bot"
+  default     = "us-central1"
 }
 
-variable "github_repo" {
-  description = "GitHub repository in format owner/repo"
+variable "zone" {
+  description = "GCP zone"
   type        = string
+  default     = "us-central1-a"
 }
 
-variable "discord_bot_token" {
-  description = "Discord bot token"
+variable "vm_name" {
+  description = "Name for the VM instance"
   type        = string
-  sensitive   = true
-}
-
-variable "discord_guild_id" {
-  description = "Discord guild ID"
-  type        = string
-  sensitive   = true
+  default     = "discord-bot"
 }

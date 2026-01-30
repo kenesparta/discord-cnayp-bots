@@ -4,54 +4,77 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Discord bots for CNCF (Cloud Native Computing Foundation) community, written in Go. This project uses **only the standard library** - no external Discord libraries. Interacts with Discord's HTTP REST API and WebSocket Gateway directly.
+Discord bots for CNAYP community, written in Python. Uses **discord.py** for Discord interaction, **Google Calendar API** for event scheduling, and **Pydantic** for configuration validation.
 
 ## Build and Run Commands
 
 ```bash
-go build ./...          # Build the project
-go build -o bot ./cmd/bot  # Build the bot binary
-go test ./...           # Run tests
-go test -run TestName ./path/to/package  # Run a specific test
-go fmt ./...            # Format code
-go vet ./...            # Vet code for issues
+# Install dependencies (using uv)
+uv sync
 
 # Run the bot
-DISCORD_BOT_TOKEN=your_token ./bot
+uv run python -m cnayp_bot
+
+# Run tests
+uv run pytest
+
+# Run a specific test
+uv run pytest tests/test_models.py::test_schedule_model
+
+# Format code
+uv run ruff format .
+
+# Lint code
+uv run ruff check .
 ```
 
-## Go Version
+## Python Version
 
-This project uses Go 1.25.5. Prefer stdlib features available in Go 1.25 over external packages when possible.
+This project uses Python 3.12+. Use modern Python features (type hints, pattern matching, etc.).
 
 ## Code Quality
 
 - **NEVER** use deprecated functions or packages. Always use the current recommended APIs.
+- Use type hints for all function signatures.
+- Follow PEP 8 style guidelines.
 
 ## Architecture
 
 ```
-cmd/bot/main.go           # Entry point, signal handling, graceful shutdown
-internal/
-  config/config.go        # Environment-based configuration
-  discord/
-    client.go             # REST API client (send messages, manage channels)
-    gateway.go            # WebSocket connection (receive events, heartbeat)
-    types.go              # Discord data structures (User, Message, Channel, Guild)
-  bot/bot.go              # Bot logic, event handlers, command routing
+src/cnayp_bot/
+  __init__.py           # Package init
+  __main__.py           # Entry: python -m cnayp_bot
+  main.py               # Bootstrap, signal handling
+  config.py             # Pydantic Settings for env vars
+  bot.py                # Bot class with commands
+  cogs/
+    __init__.py
+    scheduler.py        # Scheduler with tasks.loop(), Google Calendar integration
+  services/
+    __init__.py
+    calendar.py         # Google Calendar API service
+  models/
+    __init__.py
+    schedule.py         # Pydantic models
 ```
 
 ### Key Components
 
-- **Gateway**: Manages WebSocket connection to Discord. Handles opcodes (HELLO, HEARTBEAT, IDENTIFY, DISPATCH), maintains session, and dispatches events to registered handlers.
-- **Client**: HTTP client for Discord REST API. Used to send messages and interact with Discord resources.
-- **Bot**: Orchestrates gateway and client. Register handlers with `gateway.On("EVENT_NAME", handler)`.
+- **Bot**: Main `CNAYPBot` class extending `commands.Bot`. Handles Discord events and commands.
+- **Config**: Uses Pydantic Settings to load and validate environment variables.
+- **CalendarService**: Fetches events from Google Calendar API using service account credentials.
+- **Scheduler Cog**: Manages scheduled events using `tasks.loop()`. Handles:
+  - Fetching events from Google Calendar (every minute)
+  - Event start notifications
+  - Reminders at configured intervals (default: 60, 15 minutes)
+  - Discord scheduled event creation (24h in advance)
 
 ### Adding New Features
 
-1. Add event handler in `bot.go` using `b.gateway.On("EVENT_NAME", handlerFunc)`
-2. Add REST API methods in `client.go` if needed
-3. Add new types in `types.go` as required
+1. For new commands: Add methods with `@commands.command()` decorator in `bot.py`
+2. For new scheduled tasks: Add to `scheduler.py` cog
+3. For new config: Add fields to `config.py` Settings class
+4. For new data models: Add to `models/` directory
 
 ## CRISP Code Directives
 
@@ -64,16 +87,16 @@ Code must do what the programmer intended. Approach code skeptically, assuming b
 Readability is what remains after removing obstacles to understanding. Prioritize clear variable names, consistent naming conventions, and logical flow.
 
 ### I - Idiomatic
-Follow Go conventions and community standards. Use conventional patterns (`err` for errors, `r`/`w` for request/response, `ctx` for context). Learn idioms through studying quality Go code.
+Follow Python conventions and community standards. Use conventional patterns (snake_case, type hints, async/await for I/O). Learn idioms through studying quality Python code.
 
 ### S - Simple
-Simplicity requires thought and effort. Favor directness over unnecessary abstractions. Don't pursue DRY so rigidly that it adds complexity. Write naturally within Go's paradigms.
+Simplicity requires thought and effort. Favor directness over unnecessary abstractions. Don't pursue DRY so rigidly that it adds complexity.
 
 ### P - Performant
-Performance matters least among these principles. Optimize for programmer time over CPU time in most cases, but maintain awareness of memory and computational efficiency.
+Performance matters least among these principles. Optimize for programmer time over CPU time in most cases, but maintain awareness of async operations and blocking code.
 
 ## Security Directives
 
 - **NEVER** read, display, output, or share the contents of `.env` files or any file containing tokens, secrets, or credentials.
 - **NEVER** include real tokens, API keys, or secrets in code examples, commits, or responses.
-- Treat `DISCORD_BOT_TOKEN` and all environment variables containing sensitive data as confidential.
+- Treat `DISCORD_BOT_TOKEN`, Google service account credentials, and all environment variables containing sensitive data as confidential.

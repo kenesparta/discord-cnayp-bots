@@ -1,25 +1,16 @@
 terraform {
-  required_version = ">= 1.0"
+  backend "gcs" {}
 
   required_providers {
-    aws = {
-      source  = "hashicorp/aws"
+    google = {
+      source  = "hashicorp/google"
       version = "~> 5.0"
     }
   }
-
-  backend "s3" {}
 }
 
-provider "aws" {
-  region  = var.aws_region
-  profile = var.aws_profile
-
-  default_tags {
-    tags = {
-      Project     = var.app_name
-      ManagedBy   = "terraform"
-      Environment = "production"
-    }
-  }
+provider "google" {
+  project = var.project_id
+  region  = var.region
+  zone    = var.zone
 }

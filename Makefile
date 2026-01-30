@@ -1,22 +1,39 @@
 -include .env
 export
 
-.PHONY: build run test fmt vet clean
+.PHONY: install run test lint format clean docker-build docker-run
 
-build:
-	go build -o bot.bin ./cmd/bot
+install:
+	uv sync
 
-run: build
-	./bot.bin
+install-dev:
+	uv sync --all-extras
+
+run:
+	uv run python -m cnayp_bot
 
 test:
-	go test ./...
+	uv run pytest
 
-fmt:
-	go fmt ./...
+test-cov:
+	uv run pytest --cov=src/cnayp_bot --cov-report=term-missing
 
-vet:
-	go vet ./...
+lint:
+	uv run ruff check .
+
+format:
+	uv run ruff format .
+
+check: lint
+	uv run ruff format --check .
 
 clean:
-	rm -f bot.bin
+	rm -rf .venv __pycache__ .pytest_cache .ruff_cache
+	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+	find . -type f -name "*.pyc" -delete 2>/dev/null || true
+
+docker-build:
+	docker build -t cnayp-bot .
+
+docker-run: docker-build
+	docker run -d --env-file .env cnayp-bot
