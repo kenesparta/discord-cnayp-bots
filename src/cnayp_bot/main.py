@@ -9,6 +9,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
+logging.getLogger("google_auth_httplib2").setLevel(logging.ERROR)
 logger = logging.getLogger(__name__)
 
 

@@ -77,22 +77,35 @@ class SchedulerCog(commands.Cog):
     @tasks.loop(minutes=1)
     async def scheduler_loop(self) -> None:
         """Main scheduler loop for fetching events."""
-        if settings.webhook_enabled and settings.webhook_url:
-            # In webhook mode, only renew watch if needed
-            await self._check_watch_renewal()
-        else:
-            # Polling mode: fetch events directly
-            events = self.calendar.get_upcoming_events(hours_ahead=48)
-            for event in events:
-                self.known_events[event.id] = event
-                await self.check_and_create_discord_event(event)
+        try:
+            logger.info("Scheduler loop running")
+            if settings.webhook_enabled and settings.webhook_url:
+                # In webhook mode, only renew watch if needed
+                await self._check_watch_renewal()
+            else:
+                # Polling mode: fetch events directly
+                events = self.calendar.get_upcoming_events(hours_ahead=48)
+                logger.info("Fetched %d upcoming events from calendar", len(events))
+                for event in events:
+                    logger.info("Event: %s at %s", event.name, event.start_time)
+                    self.known_events[event.id] = event
+                    await self.check_and_create_discord_event(event)
+        except Exception as e:
+            logger.exception("Error in scheduler loop: %s", e)
 
     @tasks.loop(minutes=1)
     async def reminder_loop(self) -> None:
         """Check for reminders and start notifications."""
-        for event in self.known_events.values():
-            await self.check_and_send_reminder(event)
-            await self.check_and_send_start_notification(event)
+        try:
+            logger.info("Reminder loop running, checking %d events", len(self.known_events))
+            for event in self.known_events.values():
+                now = datetime.now(ZoneInfo("UTC"))
+                minutes_until = int((event.start_time - now).total_seconds() / 60)
+                logger.info("Event '%s': %d minutes until start", event.name, minutes_until)
+                await self.check_and_send_reminder(event)
+                await self.check_and_send_start_notification(event)
+        except Exception as e:
+            logger.exception("Error in reminder loop: %s", e)
 
     async def _check_watch_renewal(self) -> None:
         """Renew watch channel if it's about to expire."""
@@ -126,8 +139,9 @@ class SchedulerCog(commands.Cog):
 
     @reminder_loop.before_loop
     async def before_reminder_loop(self) -> None:
-        """Wait for scheduler to start first."""
-        await self.scheduler_loop.get_task()
+        """Wait for bot to be ready before starting the reminder loop."""
+        await self.bot.wait_until_ready()
+        logger.info("Reminder loop started")
 
     async def resolve_channel_id(self, channel_name: str) -> int | None:
         """Resolve a channel name to its ID, with caching."""
@@ -220,7 +234,12 @@ class SchedulerCog(commands.Cog):
             if reminder_key in self.sent_reminders:
                 continue
 
-            if abs(minutes_until - reminder_mins) <= 1:
+            diff = abs(minutes_until - reminder_mins)
+            if diff <= 1:
+                logger.info(
+                    "Sending reminder for '%s' (%d min before, diff=%d)",
+                    event.name, reminder_mins, diff
+                )
                 await self.send_reminder(event, reminder_mins)
                 self.sent_reminders.add(reminder_key)
 
