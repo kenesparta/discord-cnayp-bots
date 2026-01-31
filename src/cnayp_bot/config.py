@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     webhook_enabled: bool = False
     webhook_host: str = "0.0.0.0"
     webhook_port: int = 8080
-    webhook_url: str | None = None  # Public URL (e.g., https://your-domain.com/webhook)
+    webhook_url: str | None = None
 
     reminder_minutes: list[int] = [90, 60, 15, 5]
 

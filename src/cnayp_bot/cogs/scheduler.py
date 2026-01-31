@@ -234,8 +234,9 @@ class SchedulerCog(commands.Cog):
             if reminder_key in self.sent_reminders:
                 continue
 
-            diff = abs(minutes_until - reminder_mins)
-            if diff <= 1:
+            # Trigger when at or just past the reminder threshold (within 1 min window)
+            diff = reminder_mins - minutes_until
+            if 0 <= diff <= 1:
                 logger.info(
                     "Sending reminder for '%s' (%d min before, diff=%d)",
                     event.name, reminder_mins, diff
@@ -279,7 +280,8 @@ class SchedulerCog(commands.Cog):
         now = datetime.now(ZoneInfo("UTC"))
         minutes_until = int((event.start_time - now).total_seconds() / 60)
 
-        if abs(minutes_until) <= 1:
+        # Trigger only when event has started (minutes_until <= 0)
+        if minutes_until <= 0:
             await self.send_start_notification(event)
             self.sent_start_notifications.add(event.id)
 
