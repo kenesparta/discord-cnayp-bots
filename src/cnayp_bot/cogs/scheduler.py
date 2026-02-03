@@ -126,7 +126,7 @@ class SchedulerCog(commands.Cog):
 
     @scheduler_loop.before_loop
     async def before_scheduler_loop(self) -> None:
-        """Wait for bot to be ready before starting the loop."""
+        """Wait for the bot to be ready before starting the loop."""
         await self.bot.wait_until_ready()
 
         # Initial fetch to populate known events
@@ -139,7 +139,7 @@ class SchedulerCog(commands.Cog):
 
     @reminder_loop.before_loop
     async def before_reminder_loop(self) -> None:
-        """Wait for bot to be ready before starting the reminder loop."""
+        """Wait for the bot to be ready before starting the reminder loop."""
         await self.bot.wait_until_ready()
         logger.info("Reminder loop started")
 
@@ -209,14 +209,15 @@ class SchedulerCog(commands.Cog):
             return
 
         notification = (
-            f"**New Event Alert!**\n\n"
+            f"================\n"
+            f"**New Event Alert!**\n"
             f"**{event.name}**\n"
-            f"{event.description}\n\n"
+            f"{event.description}\n"
             f"**When:** <t:{int(event.start_time.timestamp())}:F> (<t:{int(event.start_time.timestamp())}:R>)\n"
             f"**Timezone:** {event.timezone}\n"
             f"**Duration:** {event.duration_minutes} minutes\n"
             f"**Where:** <#{voice_channel_id}>\n\n"
-            f"See you there!\n"
+            f"See you there!👇\n"
             f"https://discord.com/events/{settings.discord_guild_id}/{discord_event.id}"
         )
 
@@ -263,7 +264,8 @@ class SchedulerCog(commands.Cog):
             time_text = f"{minutes_before} minutes"
 
         msg = (
-            f"**Reminder:** {event.name} starts in {time_text}!\n\n"
+            f"================\n"
+            f"**Reminder:** {event.name} starts in {time_text}!\n"
             f"**Duration:** {event.duration_minutes} minutes\n"
             f"{event.description}\n\n"
             f"Join us in <#{voice_channel_id}>"
@@ -298,11 +300,13 @@ class SchedulerCog(commands.Cog):
         voice_channel_id = await self.resolve_channel_id(settings.discord_voice_channel)
 
         msg = (
-            f"**{event.name} is starting now!**\n\n"
+            f"================\n"
+            f"**{event.name} is starting now!**\n"
             f"{event.description}\n\n"
             f"**Duration:** {event.duration_minutes} minutes\n"
             f"**Timezone:** {event.timezone}\n\n"
             f"Join us in <#{voice_channel_id}>"
+            f"**@everyone**\n"
         )
 
         await channel.send(msg, allowed_mentions=discord.AllowedMentions(everyone=True))
