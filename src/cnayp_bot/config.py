@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     webhook_port: int = 8080
     webhook_url: str | None = None
 
-    reminder_minutes: list[int] = [90, 60, 15, 5]
+    reminder_minutes: list[int] = [60, 15, 5]
 
 
 settings = Settings()

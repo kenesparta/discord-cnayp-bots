@@ -100,7 +100,7 @@ class SchedulerCog(commands.Cog):
             logger.info("Reminder loop running, checking %d events", len(self.known_events))
             for event in self.known_events.values():
                 now = datetime.now(ZoneInfo("UTC"))
-                minutes_until = int((event.start_time - now).total_seconds() / 60)
+                minutes_until = round((event.start_time - now).total_seconds() / 60)
                 logger.info("Event '%s': %d minutes until start", event.name, minutes_until)
                 await self.check_and_send_reminder(event)
                 await self.check_and_send_start_notification(event)
@@ -227,7 +227,7 @@ class SchedulerCog(commands.Cog):
     async def check_and_send_reminder(self, event: CalendarEvent) -> None:
         """Send reminder if we're at a reminder interval."""
         now = datetime.now(ZoneInfo("UTC"))
-        minutes_until = int((event.start_time - now).total_seconds() / 60)
+        minutes_until = round((event.start_time - now).total_seconds() / 60)
 
         for reminder_mins in settings.reminder_minutes:
             reminder_key = f"{event.id}:{reminder_mins}"
@@ -280,7 +280,7 @@ class SchedulerCog(commands.Cog):
             return
 
         now = datetime.now(ZoneInfo("UTC"))
-        minutes_until = int((event.start_time - now).total_seconds() / 60)
+        minutes_until = round((event.start_time - now).total_seconds() / 60)
 
         # Trigger only when event has started (minutes_until <= 0)
         if minutes_until <= 0:
