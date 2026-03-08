@@ -60,7 +60,7 @@ def test_schedule_config_defaults():
     assert config.schedules == []
     assert config.digest_time == ""
     assert config.digest_channel == ""
-    assert config.reminder_minutes == [60, 15]
+    assert config.reminder_minutes == [45, 10]
 
 
 def test_load_schedules_json(tmp_path: Path):

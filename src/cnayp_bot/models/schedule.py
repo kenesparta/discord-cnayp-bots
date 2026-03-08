@@ -22,4 +22,4 @@ class ScheduleConfig(BaseModel):
     schedules: list[Schedule] = Field(default_factory=list)
     digest_time: str = ""
     digest_channel: str = ""
-    reminder_minutes: list[int] = Field(default_factory=lambda: [60, 15])
+    reminder_minutes: list[int] = Field(default_factory=lambda: [45, 10])
